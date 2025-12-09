@@ -3,12 +3,13 @@ import 'package:provider/provider.dart';
 import '../providers/landlord_provider.dart';
 import '../widgets/app_modals.dart';
 import 'profile_screen.dart';
+
+// Tabs
 import 'tabs/listings_tab.dart';
 import 'tabs/requests_tab.dart';
+import 'tabs/agreements_tab.dart'; 
+import 'tabs/payments_tab.dart';   
 import 'tabs/notifications_tab.dart';
-import 'tabs/agreements_tab.dart';
-import 'tabs/payments_tab.dart';
-// Import other tabs...
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,19 +21,20 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
 
-  // Add the remaining tabs to this list
-final List<Widget> _pages = const [
-  ListingsTab(),
-  LeaseRequestsTab(),
-  AgreementsTab(), // Replaced Placeholder
-  PaymentsTab(),   // Replaced Placeholder
-  NotificationsTab(),
-];
+  // REMOVED 'const' keyword here. 
+  // Lists containing Widgets usually shouldn't be const in stateful widgets.
+  final List<Widget> _pages = [
+    const ListingsTab(),
+    const LeaseRequestsTab(),
+    const AgreementsTab(),
+    const PaymentsTab(),
+    const NotificationsTab(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<LandlordProvider>(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Removed unused 'isDark' variable
     final isEn = provider.language == 'en';
 
     return Scaffold(
@@ -59,7 +61,11 @@ final List<Widget> _pages = const [
           NavigationDestination(icon: const Icon(Icons.fact_check), label: isEn ? 'Contracts' : 'عقود'),
           NavigationDestination(icon: const Icon(Icons.attach_money), label: isEn ? 'Payments' : 'دفع'),
           NavigationDestination(
-            icon: Badge(isLabelVisible: provider.notifications.any((n) => !n.read), child: const Icon(Icons.notifications)),
+            // Accessing provider.notifications is now safe
+            icon: Badge(
+              isLabelVisible: provider.notifications.any((n) => n['read'] == false),
+              child: const Icon(Icons.notifications),
+            ),
             label: isEn ? 'Alerts' : 'تنبيهات',
           ),
         ],

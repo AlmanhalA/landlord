@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../providers/landlord_provider.dart';
-import '../../widgets/common_widgets.dart';
+import '../../models/app_models.dart';
 
 class PaymentsTab extends StatelessWidget {
   const PaymentsTab({super.key});
@@ -10,13 +11,13 @@ class PaymentsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = Provider.of<LandlordProvider>(context);
     final isEn = provider.language == 'en';
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dateFormat = DateFormat('yyyy-MM-dd');
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          // Header Row
+          // Header: Title + Add CliQ Button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -28,144 +29,230 @@ class PaymentsTab extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.cyan,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
                 ),
                 onPressed: () => _showAddCliqDialog(context),
-                child: Text(isEn ? 'Add CliQ' : 'إضافة CliQ'),
+                child: Text(
+                  isEn ? 'Add CliQ' : 'إضافة CliQ',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
+          
           const SizedBox(height: 16),
 
-          // CliQ Info Box (if exists)
-          if (provider.cliqAccount.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              // --- FIX IS HERE: Changed from .bottom(16) to .only(bottom: 16) ---
-              margin: const EdgeInsets.only(bottom: 16), 
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey[900] : Colors.blue[50],
-                border: Border.all(color: isDark ? Colors.grey[700]! : Colors.blue[200]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('CliQ Account:', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                  Text(provider.cliqAccount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
-            ),
-
-          // List
+          // Content List
           Expanded(
-            child: provider.paymentHistory.isEmpty
+            child: provider.receipts.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.receipt_long, size: 64, color: Colors.grey[400]),
+                        Icon(Icons.receipt_long, size: 64, color: Colors.grey[600]),
                         const SizedBox(height: 16),
                         Text(
                           isEn ? 'No payment history' : 'لا يوجد سجل دفع',
-                          style: TextStyle(color: Colors.grey[500]),
+                          style: TextStyle(color: Colors.grey[500], fontSize: 16),
                         ),
                       ],
                     ),
                   )
                 : ListView.builder(
-                    itemCount: provider.paymentHistory.length,
+                    itemCount: provider.receipts.length,
                     itemBuilder: (context, index) {
-                      final item = provider.paymentHistory[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              // Card Header
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(item.property, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        Text(item.studentName, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                                      ],
-                                    ),
-                                  ),
-                                  StatusChip(
-                                    label: item.status,
-                                    color: item.status == 'confirmed' ? Colors.green 
-                                        : item.status == 'rejected' ? Colors.red 
-                                        : Colors.amber,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Stats Grid
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.grey[900] : Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    _StatItem(label: isEn ? 'Amount' : 'المبلغ', value: '\$${item.amount}'),
-                                    _StatItem(label: isEn ? 'Date' : 'التاريخ', value: item.date),
-                                    _StatItem(label: isEn ? 'Method' : 'الطريقة', value: item.method),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Actions
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan, foregroundColor: Colors.white),
-                                      onPressed: () {},
-                                      icon: const Icon(Icons.visibility, size: 16),
-                                      label: Text(isEn ? 'Receipt' : 'الإيصال'),
-                                    ),
-                                  ),
-                                  if (item.status == 'pending') ...[
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                                        onPressed: () => provider.updatePaymentStatus(item.id, 'confirmed'),
-                                        icon: const Icon(Icons.check, size: 16),
-                                        label: Text(isEn ? 'Confirm' : 'تأكيد'),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                                        onPressed: () => provider.updatePaymentStatus(item.id, 'rejected'),
-                                        child: const Icon(Icons.close, size: 20),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
+                      final item = provider.receipts[index];
+                      return _buildPaymentCard(context, item, provider, dateFormat);
                     },
                   ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPaymentCard(BuildContext context, PaymentReceipt item, LandlordProvider provider, DateFormat fmt) {
+    final isPending = item.status == PaymentStatus.pending;
+    final isConfirmed = item.status == PaymentStatus.confirmed;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1F2937), // Card Background (Lighter Dark)
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade800),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Header: Property + Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.propertyName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.studentName,
+                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isConfirmed ? Colors.green : (isPending ? Colors.orange : Colors.red),
+                    ),
+                  ),
+                  child: Text(
+                    item.status.toString().split('.').last,
+                    style: TextStyle(
+                      color: isConfirmed ? Colors.green : (isPending ? Colors.orange : Colors.red),
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // 2. Stats Grid (Inner Dark Box)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111827), // Darker Inner Background
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildStatItem("Amount", "\$${item.amount.toInt()}"),
+                  _buildStatItem("Date", fmt.format(item.date)),
+                  _buildStatItem("Method", item.method),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 3. Action Buttons
+            if (isConfirmed || item.status == PaymentStatus.rejected)
+              // Single "View Receipt" button for processed items
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyan,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () { /* View Receipt Logic */ },
+                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  label: const Text("View Receipt", style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              )
+            else
+              // Action Row for Pending Items
+              Row(
+                children: [
+                  // View Receipt
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.cyan,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () { /* View Receipt Logic */ },
+                      child: const Column(
+                        children: [
+                          Icon(Icons.visibility_outlined, size: 20),
+                          Text("View\nReceipt", textAlign: TextAlign.center, style: TextStyle(fontSize: 10, height: 1.2)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  // Confirm
+                  Expanded(
+                    flex: 3,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 20), // Taller to match layout
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => provider.verifyReceipt(item.id, true),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text("Confirm", style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  // Reject
+                  Expanded(
+                    flex: 3,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: Colors.grey.shade700),
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: Colors.transparent,
+                      ),
+                      onPressed: () => provider.verifyReceipt(item.id, false),
+                      icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                      label: const Text("Reject", style: TextStyle(color: Colors.grey)),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 6),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 
@@ -176,42 +263,33 @@ class PaymentsTab extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Add CliQ Account'),
+        backgroundColor: const Color(0xFF1F2937),
+        title: const Text('Add CliQ Account', style: TextStyle(color: Colors.white)),
         content: TextField(
+          style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
             labelText: 'CliQ ID / Phone',
-            border: OutlineInputBorder(),
+            labelStyle: TextStyle(color: Colors.grey),
+            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.cyan)),
           ),
           onChanged: (v) => inputVal = v,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey))
+          ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
             onPressed: () {
-              provider.cliqAccount = inputVal;
-              provider.notifyListeners(); 
+              provider.updateCliq(inputVal);
               Navigator.pop(ctx);
             },
-            child: const Text('Save'),
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final String label;
-  final String value;
-  const _StatItem({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-      ],
     );
   }
 }

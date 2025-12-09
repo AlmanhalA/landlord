@@ -2,121 +2,197 @@ import 'package:flutter/material.dart';
 import '../models/app_models.dart';
 
 class LandlordProvider with ChangeNotifier {
-  // Auth
-  bool isLoggedIn = false;
-  
-  // Settings
+  // --- UI State ---
+  bool isLoggedIn = true;
   String language = 'en';
   ThemeMode themeMode = ThemeMode.dark;
-  bool notificationsEnabled = true;
-
-  // App State
   String searchQuery = '';
-  String notificationFilter = 'all';
-  String cliqAccount = '';
+  
+  // NEW: Filter State for Notifications
+  String notificationFilter = 'all'; // Values: 'all', 'read', 'unread'
 
-  // Data
+  // --- Data ---
+  LandlordProfile currentUser = LandlordProfile(
+    id: 'L001',
+    name: 'Ahmed Landlord',
+    email: 'ahmed@example.com',
+    cliqAccount: '0791234567',
+    verificationStatus: VerificationStatus.unverified,
+  );
+
   List<Listing> listings = [
     Listing(
       id: 1,
-      photo: 'https://images.unsplash.com/photo-1651752523215-9bf678c29355?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
-      name: 'Shafa badraan Apartment 5',
-      address: '123 Shafa Badraan St, Amman',
-      description: 'Spacious 2-bedroom apartment with modern amenities',
-      status: 'Active',
-      payment: 'Paid',
-      price: 1200,
-      billingPeriod: 'month',
+      name: 'Shafa Badraan Apt 5',
+      address: '123 University St',
+      description: 'Cozy student apartment',
+      price: 250,
+      deposit: 250,
       bedrooms: 2,
       bathrooms: 1,
-      location: 'Shafa Badraan, Amman',
-      ownershipDocument: 'deed.pdf',
-    ),
-    // Add more mock data here...
+      location: 'Amman',
+      amenities: ['WiFi'],
+      houseRules: 'No smoking',
+      ownershipDocumentUrl: 'doc.pdf',
+    )
   ];
 
-  List<LeaseRequest> leaseRequests = [
+  List<LeaseRequest> requests = [
     LeaseRequest(
-      id: 1,
+      id: 101,
       studentName: 'John Smith',
       studentEmail: 'john.smith@university.edu',
       studentPhone: '+962 79 123 4567',
       studentMajor: 'Computer Science',
       studentYear: '3rd Year',
-      property: 'Shafa badraan Apartment 5',
+      propertyName: 'Shafa badraan Apartment 5',
+      propertyId: 1,
       rentAmount: 1200,
       duration: 12,
-      startDate: '2025-01-01',
-      message: 'I am a graduate student looking for a quiet place.',
-    ),
+      startDate: DateTime(2025, 1, 1),
+      message: 'I am a graduate student looking for a quiet place to study.',
+    )
   ];
 
-  List<Agreement> agreements = [];
-  List<NotificationItem> notifications = [
-    NotificationItem(id: 1, title: 'New lease request', message: 'John Smith requested to rent...', time: '2 hours ago'),
+  List<PaymentReceipt> receipts = [
+    PaymentReceipt(
+      id: 501,
+      studentName: 'Sarah Johnson',
+      propertyName: 'Dahyat Al-rasheed Studio',
+      amount: 950,
+      date: DateTime(2024, 11, 15),
+      method: 'Cash',
+      receiptImageUrl: 'assets/mock.jpg',
+      status: PaymentStatus.pending,
+    ),
+    PaymentReceipt(
+      id: 502,
+      studentName: 'Michael Chen',
+      propertyName: 'AL-Jamaa Street Apartment 34',
+      amount: 1800,
+      date: DateTime(2024, 11, 1),
+      method: 'CliQ',
+      receiptImageUrl: 'assets/mock.jpg',
+      status: PaymentStatus.confirmed,
+    )
   ];
-  List<PaymentItem> paymentHistory = [];
+
+  List<Agreement> agreements = [
+    Agreement(
+      id: 1,
+      studentName: 'Michael Chen',
+      propertyName: 'AL-Jamaa Street Apartment 34',
+      rentAmount: 1800,
+      duration: 12,
+      startDate: DateTime(2024, 9, 1),
+      status: 'Active',
+      landlordSigned: true,
+      studentSigned: true,
+      landlordSignDate: DateTime(2024, 8, 15),
+      location: 'AL-Jamaa Street, Amman',
+    )
+  ];
+
+  List<Map<String, dynamic>> notifications = [
+    {'id': 1, 'title': 'New Request', 'message': 'Sami requested lease', 'time': '2h ago', 'read': false},
+    {'id': 2, 'title': 'Payment Received', 'message': 'Michael paid \$1800', 'time': '1d ago', 'read': true},
+    {'id': 3, 'title': 'System Update', 'message': 'Maintenance scheduled', 'time': '3d ago', 'read': true},
+  ];
+
+  // --- Getters ---
+  
+  List<Listing> get filteredListings {
+    if (searchQuery.isEmpty) return listings;
+    return listings.where((l) =>
+        l.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+        l.address.toLowerCase().contains(searchQuery.toLowerCase())
+    ).toList();
+  }
+
+  // NEW: Filtered Notifications Getter
+  List<Map<String, dynamic>> get filteredNotifications {
+    if (notificationFilter == 'all') return notifications;
+    if (notificationFilter == 'read') return notifications.where((n) => n['read'] == true).toList();
+    if (notificationFilter == 'unread') return notifications.where((n) => n['read'] == false).toList();
+    return notifications;
+  }
 
   // --- Actions ---
-  void login() {
-    isLoggedIn = true;
+  
+  // NEW: Notification Actions
+  void setNotificationFilter(String filter) {
+    notificationFilter = filter;
     notifyListeners();
-  }
-
-  void logout() {
-    isLoggedIn = false;
-    notifyListeners();
-  }
-
-  void toggleTheme(String val) {
-    themeMode = val == 'dark' ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
-  }
-
-  void setLanguage(String lang) {
-    language = lang;
-    notifyListeners();
-  }
-
-  void removeListing(int id) {
-    listings.removeWhere((l) => l.id == id);
-    notifyListeners();
-  }
-
-  void updateLeaseStatus(int id, String status) {
-    final index = leaseRequests.indexWhere((r) => r.id == id);
-    if (index != -1) {
-      leaseRequests[index].status = status;
-      notifyListeners();
-    }
-  }
-
-  void createAgreement(Agreement agreement) {
-    agreements.add(agreement);
-    notifyListeners();
-  }
-
-  void updatePaymentStatus(int id, String status) {
-    final index = paymentHistory.indexWhere((p) => p.id == id);
-    if (index != -1) {
-      paymentHistory[index].status = status;
-      notifyListeners();
-    }
   }
 
   void toggleNotificationRead(int id) {
-    final index = notifications.indexWhere((n) => n.id == id);
+    final index = notifications.indexWhere((n) => n['id'] == id);
     if (index != -1) {
-      notifications[index].read = !notifications[index].read;
+      notifications[index]['read'] = !notifications[index]['read'];
       notifyListeners();
     }
   }
 
-  List<Listing> get filteredListings {
-    if (searchQuery.isEmpty) return listings;
-    return listings.where((l) => 
-      l.name.toLowerCase().contains(searchQuery.toLowerCase()) || 
-      l.address.toLowerCase().contains(searchQuery.toLowerCase())
-    ).toList();
+  void deleteNotification(int id) {
+    notifications.removeWhere((n) => n['id'] == id);
+    notifyListeners();
+  }
+
+  void markAllRead() {
+    for (var n in notifications) {
+      n['read'] = true;
+    }
+    notifyListeners();
+  }
+
+  // ... (Existing actions below: setLanguage, toggleTheme, login, etc.) ...
+  void setLanguage(String lang) { language = lang; notifyListeners(); }
+  void setSearchQuery(String query) { searchQuery = query; notifyListeners(); }
+  void toggleTheme(String val) { themeMode = val == 'dark' ? ThemeMode.dark : ThemeMode.light; notifyListeners(); }
+  void login() { isLoggedIn = true; notifyListeners(); }
+  void logout() { isLoggedIn = false; notifyListeners(); }
+  
+  void submitVerification(String idUrl) {
+    currentUser = LandlordProfile(
+      id: currentUser.id, name: currentUser.name, email: currentUser.email, cliqAccount: currentUser.cliqAccount,
+      verificationStatus: VerificationStatus.pending, govCardIdUrl: idUrl,
+    );
+    notifyListeners();
+  }
+
+  void addListing(Listing listing) {
+    if (currentUser.verificationStatus != VerificationStatus.verified) { listings.add(listing); } else { listings.add(listing); }
+    notifyListeners();
+  }
+  void updateListing(Listing updatedListing) {
+    final index = listings.indexWhere((l) => l.id == updatedListing.id);
+    if (index != -1) { listings[index] = updatedListing; notifyListeners(); }
+  }
+  void removeListing(int id) { listings.removeWhere((l) => l.id == id); notifyListeners(); }
+  
+  void acceptRequest(int reqId) {
+    final index = requests.indexWhere((r) => r.id == reqId);
+    if (index != -1) { requests[index].status = RequestStatus.accepted; notifyListeners(); }
+  }
+  void rejectRequest(int reqId) {
+    final index = requests.indexWhere((r) => r.id == reqId);
+    if (index != -1) { requests[index].status = RequestStatus.rejected; notifyListeners(); }
+  }
+  void updateLeaseStatus(int reqId, RequestStatus status) {
+    final index = requests.indexWhere((r) => r.id == reqId);
+    if (index != -1) { requests[index].status = status; notifyListeners(); }
+  }
+  void createAgreement(Agreement agreement) { agreements.add(agreement); notifyListeners(); }
+  
+  void verifyReceipt(int receiptId, bool approved) {
+    final index = receipts.indexWhere((r) => r.id == receiptId);
+    if (index != -1) { receipts[index].status = approved ? PaymentStatus.confirmed : PaymentStatus.rejected; notifyListeners(); }
+  }
+  void updateCliq(String newCliq) {
+    currentUser = LandlordProfile(
+      id: currentUser.id, name: currentUser.name, email: currentUser.email, cliqAccount: newCliq,
+      verificationStatus: currentUser.verificationStatus, govCardIdUrl: currentUser.govCardIdUrl,
+    );
+    notifyListeners();
   }
 }

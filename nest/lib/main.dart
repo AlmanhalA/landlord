@@ -38,7 +38,7 @@ class MyApp extends StatelessWidget {
         colorScheme: const ColorScheme.dark(
           primary: Colors.cyan,
           surface: Color(0xFF1F2937),
-          background: Color(0xFF111827),
+          // 'background' is deprecated, removed.
         ),
         scaffoldBackgroundColor: const Color(0xFF111827),
         cardColor: const Color(0xFF1F2937),
